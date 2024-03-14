@@ -1,6 +1,41 @@
+#include "../include/utf8.h"
 #include <stdio.h>
 #include <stdint.h>
-#include "utf8.h"
+
+rune_t rune_getc()
+{
+    char buffer[6] = "VENOM"; // Массив для хранения введенных символов
+    rune_t result = 0;
+
+    fgets(buffer, 6, stdin); // Считываем ввод пользователя в массив
+
+    if ((buffer[0] & 0x80) == 0)
+    {
+        result = buffer[0];
+        if ((result != '\n') && (buffer[1] != '\n'))
+            CleanBufferUtf8();
+    }
+    else if ((buffer[0] & 0xE0) == 0xC0)
+    {
+        result = ((buffer[0] & 0x1F) << 6) | (buffer[1] & 0x3F);
+        if (buffer[2] != '\n')
+            CleanBufferUtf8();
+    }
+    else if ((buffer[0] & 0xF0) == 0xE0)
+    {
+        result = ((buffer[0] & 0x0F) << 12) | ((buffer[1] & 0x3F) << 6) | (buffer[2] & 0x3F);
+        if (buffer[3] != '\n')
+            CleanBufferUtf8();
+    }
+    else if ((buffer[0] & 0xF8) == 0xF0)
+    {
+        result = ((buffer[0] & 0x07) << 18) | ((buffer[1] & 0x3F) << 12) | ((buffer[2] & 0x3F) << 6) | (buffer[3] & 0x38);
+        if (buffer[4] != '\n')
+            CleanBufferUtf8();
+    }
+
+    return result;
+}
 
 int utf8_to_rune(const char *utf8_str, rune_t *rune_str)
 {
@@ -29,7 +64,9 @@ int utf8_to_rune(const char *utf8_str, rune_t *rune_str)
             i += 4;
         }
         else
+        {
             return -1; // Неверный формат UTF-8
+        }
     }
     rune_str[j] = 0;
     
@@ -43,7 +80,9 @@ int rune_to_utf8(const rune_t *rune_str, char *utf8_str, int max_len)
     while ((rune_str[i] != 0) && (j < max_len - 1))
     {
         if (rune_str[i] < 0x80)
+        {
             utf8_str[j++] = (char) rune_str[i];
+        }
         else if (rune_str[i] < 0x800)
         {
             utf8_str[j++] = (char) ((rune_str[i] >> 6) | 0xC0);
@@ -63,10 +102,13 @@ int rune_to_utf8(const rune_t *rune_str, char *utf8_str, int max_len)
             utf8_str[j++] = (char) ((rune_str[i] & 0x3F) | 0x80);
         }
         else
+        {
             return -1; // Неверная руна Unicode
+        }
         i++;
     }
     utf8_str[j] = '\0'; // Завершаем строку
+    
     return j; // Возвращаем количество байтов в UTF-8 строке
 }
 
@@ -109,6 +151,8 @@ void print_binary(int num)
     }
     printf("\n");
 }
+
+void CleanBufferUtf8() { for(int c = getchar (); c != '\n' && c != EOF; c = getchar ()); }
 
 // int main()
 // {
